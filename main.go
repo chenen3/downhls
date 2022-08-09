@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/chenen3/downhls/dl"
 )
@@ -17,7 +18,15 @@ var (
 func init() {
 	flag.StringVar(&url, "u", "", "M3U8 URL, required")
 	flag.IntVar(&chanSize, "c", 25, "Maximum number of occurrences")
-	flag.StringVar(&output, "o", "", "Output folder, required")
+	flag.StringVar(&output, "o", "", "Output file path, required")
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+		fmt.Fprint(flag.CommandLine.Output(), `
+Example:
+	downhls -u http://example.com/index.m3u8 -o example.ts
+`)
+	}
 }
 
 func main() {
@@ -29,10 +38,15 @@ func main() {
 		}
 	}()
 	if url == "" {
-		panicParameter("u")
+		flag.Usage()
+		return
 	}
 	if output == "" {
-		panicParameter("o")
+		flag.Usage()
+		return
+	}
+	if filepath.Ext(output) != ".ts" {
+		panic("the output file name extension must be .ts")
 	}
 	if chanSize <= 0 {
 		panic("parameter 'c' must be greater than 0")
@@ -45,8 +59,4 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("Done!")
-}
-
-func panicParameter(name string) {
-	panic("parameter '" + name + "' is required")
 }

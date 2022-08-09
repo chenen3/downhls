@@ -3,6 +3,7 @@ package dl
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,19 +17,17 @@ import (
 
 const (
 	tsExt            = ".ts"
-	tsFolderName     = "ts"
-	mergeTSFilename  = "main.ts"
 	tsTempFileSuffix = "_tmp"
 	progressWidth    = 40
 )
 
 type Downloader struct {
-	lock     sync.Mutex
-	queue    []int
-	folder   string
-	tsFolder string
-	finish   int32
-	segLen   int
+	lock   sync.Mutex
+	queue  []int
+	output string
+	tmpDir string
+	finish int32
+	segLen int
 
 	result *parse.Result
 }
@@ -39,28 +38,14 @@ func NewTask(output string, url string) (*Downloader, error) {
 	if err != nil {
 		return nil, err
 	}
-	var folder string
-	// If no output folder specified, use current directory
-	if output == "" {
-		current, err := tool.CurrentDir()
-		if err != nil {
-			return nil, err
-		}
-		folder = filepath.Join(current, output)
-	} else {
-		folder = output
-	}
-	if err := os.MkdirAll(folder, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("create storage folder failed: %s", err.Error())
-	}
-	tsFolder := filepath.Join(folder, tsFolderName)
-	if err := os.MkdirAll(tsFolder, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("create ts folder '[%s]' failed: %s", tsFolder, err.Error())
+	tmpDir, err := os.MkdirTemp("", "m3u8*")
+	if err != nil {
+		return nil, err
 	}
 	d := &Downloader{
-		folder:   folder,
-		tsFolder: tsFolder,
-		result:   result,
+		output: output,
+		tmpDir: tmpDir,
+		result: result,
 	}
 	d.segLen = len(result.M3u8.Segments)
 	d.queue = genSlice(d.segLen)
@@ -110,7 +95,7 @@ func (d *Downloader) download(segIndex int) error {
 	}
 	//noinspection GoUnhandledErrorResult
 	defer b.Close()
-	fPath := filepath.Join(d.tsFolder, tsFilename)
+	fPath := filepath.Join(d.tmpDir, tsFilename)
 	fTemp := fPath + tsTempFileSuffix
 	f, err := os.Create(fTemp)
 	if err != nil {
@@ -192,7 +177,7 @@ func (d *Downloader) merge() error {
 	missingCount := 0
 	for idx := 0; idx < d.segLen; idx++ {
 		tsFilename := tsFilename(idx)
-		f := filepath.Join(d.tsFolder, tsFilename)
+		f := filepath.Join(d.tmpDir, tsFilename)
 		if _, err := os.Stat(f); err != nil {
 			missingCount++
 		}
@@ -202,36 +187,38 @@ func (d *Downloader) merge() error {
 	}
 
 	// Create a TS file for merging, all segment files will be written to this file.
-	mFilePath := filepath.Join(d.folder, mergeTSFilename)
-	mFile, err := os.Create(mFilePath)
+	mFile, err := os.Create(d.output)
 	if err != nil {
-		return fmt.Errorf("create main TS file failed：%s", err.Error())
+		return fmt.Errorf("create main TS file failed: %s", err.Error())
 	}
 	//noinspection GoUnhandledErrorResult
 	defer mFile.Close()
 
-	writer := bufio.NewWriter(mFile)
 	mergedCount := 0
 	for segIndex := 0; segIndex < d.segLen; segIndex++ {
 		tsFilename := tsFilename(segIndex)
-		bytes, err := ioutil.ReadFile(filepath.Join(d.tsFolder, tsFilename))
-		_, err = writer.Write(bytes)
+		f, err := os.Open(filepath.Join(d.tmpDir, tsFilename))
 		if err != nil {
+			fmt.Printf("merging: %s\n", err)
+			continue
+		}
+		_, err = io.Copy(mFile, f)
+		f.Close()
+		if err != nil {
+			fmt.Printf("merging: %s\n", err)
 			continue
 		}
 		mergedCount++
-		tool.DrawProgressBar("merge",
-			float32(mergedCount)/float32(d.segLen), progressWidth)
+		tool.DrawProgressBar("merge", float32(mergedCount)/float32(d.segLen), progressWidth)
 	}
-	_ = writer.Flush()
 	// Remove `ts` folder
-	_ = os.RemoveAll(d.tsFolder)
+	_ = os.RemoveAll(d.tmpDir)
 
 	if mergedCount != d.segLen {
 		fmt.Printf("[warning] \n%d files merge failed", d.segLen-mergedCount)
 	}
 
-	fmt.Printf("\n[output] %s\n", mFilePath)
+	fmt.Printf("\n[output] %s\n", d.output)
 
 	return nil
 }
