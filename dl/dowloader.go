@@ -6,8 +6,10 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -72,7 +74,7 @@ func (d *Downloader) Start(concurrency int) error {
 				// Back into the queue, retry request
 				fmt.Printf("[failed] %s\n", err.Error())
 				if err := d.back(idx); err != nil {
-					fmt.Printf(err.Error())
+					fmt.Println(err)
 				}
 			}
 			<-limitChan
@@ -80,10 +82,7 @@ func (d *Downloader) Start(concurrency int) error {
 		limitChan <- struct{}{}
 	}
 	wg.Wait()
-	if err := d.merge(); err != nil {
-		return err
-	}
-	return nil
+	return d.merge()
 }
 
 func (d *Downloader) download(segIndex int) error {
@@ -186,40 +185,51 @@ func (d *Downloader) merge() error {
 		fmt.Printf("[warning] %d files missing\n", missingCount)
 	}
 
-	// Create a TS file for merging, all segment files will be written to this file.
-	mFile, err := os.Create(d.output)
-	if err != nil {
-		return fmt.Errorf("create main TS file failed: %s", err.Error())
+	switch filepath.Ext(d.output) {
+	case ".ts":
+		// Create a TS file for merging, all segment files will be written to this file.
+		mFile, err := os.Create(d.output)
+		if err != nil {
+			return fmt.Errorf("failed to create output file: %s", err.Error())
+		}
+		defer mFile.Close()
+		mergedCount := 0
+		for segIndex := 0; segIndex < d.segLen; segIndex++ {
+			tsFilename := tsFilename(segIndex)
+			f, err := os.Open(filepath.Join(d.tmpDir, tsFilename))
+			if err != nil {
+				fmt.Printf("merging: %s\n", err)
+				continue
+			}
+			_, err = io.Copy(mFile, f)
+			f.Close()
+			if err != nil {
+				fmt.Printf("merging: %s\n", err)
+				continue
+			}
+			mergedCount++
+			tool.DrawProgressBar("merge", float32(mergedCount)/float32(d.segLen), progressWidth)
+		}
+		if mergedCount != d.segLen {
+			fmt.Printf("merge: %d files failed\n", d.segLen-mergedCount)
+		}
+	case ".mp4":
+		var tsFiles []string
+		for segIndex := 0; segIndex < d.segLen; segIndex++ {
+			tsFiles = append(tsFiles, filepath.Join(d.tmpDir, tsFilename(segIndex)))
+		}
+		concat := strings.Join(tsFiles, "|")
+		cmd := exec.Command("ffmpeg", "-i", "concat:"+concat, "-c", "copy", d.output)
+		err := cmd.Run()
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported file extension: %s", d.output)
 	}
-	//noinspection GoUnhandledErrorResult
-	defer mFile.Close()
 
-	mergedCount := 0
-	for segIndex := 0; segIndex < d.segLen; segIndex++ {
-		tsFilename := tsFilename(segIndex)
-		f, err := os.Open(filepath.Join(d.tmpDir, tsFilename))
-		if err != nil {
-			fmt.Printf("merging: %s\n", err)
-			continue
-		}
-		_, err = io.Copy(mFile, f)
-		f.Close()
-		if err != nil {
-			fmt.Printf("merging: %s\n", err)
-			continue
-		}
-		mergedCount++
-		tool.DrawProgressBar("merge", float32(mergedCount)/float32(d.segLen), progressWidth)
-	}
-	// Remove `ts` folder
 	_ = os.RemoveAll(d.tmpDir)
-
-	if mergedCount != d.segLen {
-		fmt.Printf("[warning] \n%d files merge failed", d.segLen-mergedCount)
-	}
-
 	fmt.Printf("\n[output] %s\n", d.output)
-
 	return nil
 }
 

@@ -16,15 +16,19 @@ var (
 )
 
 func init() {
-	flag.StringVar(&url, "u", "", "M3U8 URL, required")
+	flag.StringVar(&url, "i", "", "M3U8 URL, required")
 	flag.IntVar(&chanSize, "c", 25, "Maximum number of occurrences")
 	flag.StringVar(&output, "o", "", "Output file path, required")
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		flag.PrintDefaults()
 		fmt.Fprint(flag.CommandLine.Output(), `
-Example:
-	downhls -u http://example.com/index.m3u8 -o example.ts
+Examples:
+  output to transport stream file:
+    	downhls -i http://example.com/index.m3u8 -o output.ts
+
+  output to mp4 file (required ffmpeg):
+    	downhls -i http://example.com/index.m3u8 -o output.mp4
 `)
 	}
 }
@@ -45,8 +49,8 @@ func main() {
 		flag.Usage()
 		return
 	}
-	if filepath.Ext(output) != ".ts" {
-		panic("the output file name extension must be .ts")
+	if ext := filepath.Ext(output); ext != ".ts" && ext != ".mp4" {
+		panic("the output file name extension must be .ts or .mp4")
 	}
 	if chanSize <= 0 {
 		panic("parameter 'c' must be greater than 0")
