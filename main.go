@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oopsguy/m3u8/dl"
+	"github.com/chenen3/downhls/dl"
 )
 
 var (

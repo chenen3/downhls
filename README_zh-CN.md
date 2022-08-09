@@ -45,7 +45,7 @@ Windows PowerShell
 
 ## 下载
 
-[二进制文件](https://github.com/oopsguy/m3u8/releases)
+[二进制文件](https://github.com/chenen3/downhls/releases)
 
 ## 截屏
 
