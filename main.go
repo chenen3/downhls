@@ -20,7 +20,8 @@ func init() {
 	flag.IntVar(&chanSize, "c", 25, "Maximum number of occurrences")
 	flag.StringVar(&output, "o", "", "Output file path, required")
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "Downhls is a tool for downloading HTTP Live Streaming.\n\n")
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage:")
 		flag.PrintDefaults()
 		fmt.Fprint(flag.CommandLine.Output(), `
 Examples:

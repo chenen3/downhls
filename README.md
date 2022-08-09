@@ -1,6 +1,6 @@
 # downhls
 
-This repository implements a HTTP Live Streaming (HLS) downloader, it is forked from [oopsguy/m3u8](https://github.com/oopsguy/m3u8). I made some changes to meet my needs.
+This repository implements a tool for downloading HTTP Live Streaming (HLS), it is forked from [oopsguy/m3u8](https://github.com/oopsguy/m3u8). I made some changes to support merging into MP4 file.
 
 ## Install
 
