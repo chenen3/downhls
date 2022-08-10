@@ -1,6 +1,8 @@
 # downhls
 
-This repository implements a tool for downloading HTTP Live Streaming (HLS), it is forked from [oopsguy/m3u8](https://github.com/oopsguy/m3u8). I made some changes to support merging into MP4 file.
+This repository implements a tool for downloading HTTP Live Streaming (HLS), 
+it is forked from [oopsguy/m3u8](https://github.com/oopsguy/m3u8).
+I made some changes to convert TS files to MP4 files using ffmpeg.
 
 ## Install
 
@@ -20,9 +22,9 @@ Avaiable options:
     	Output file path, required
 
 Examples:
-  output to transport stream file:
+  output to TS file:
     	downhls -i http://example.com/index.m3u8 -o output.ts
 
-  output to mp4 file (required ffmpeg):
+  output to MP4 file (required ffmpeg):
     	downhls -i http://example.com/index.m3u8 -o output.mp4
 ```
