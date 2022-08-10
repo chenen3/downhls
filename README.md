@@ -23,8 +23,8 @@ Avaiable options:
 
 Examples:
   output to TS file:
-    	downhls -i http://example.com/index.m3u8 -o output.ts
+    	downhls -i "http://example.com/index.m3u8" -o output.ts
 
   output to MP4 file (required ffmpeg):
-    	downhls -i http://example.com/index.m3u8 -o output.mp4
+    	downhls -i "http://example.com/index.m3u8" -o output.mp4
 ```
