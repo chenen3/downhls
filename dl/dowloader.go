@@ -40,7 +40,7 @@ func NewTask(output string, url string) (*Downloader, error) {
 	if err != nil {
 		return nil, err
 	}
-	tmpDir, err := os.MkdirTemp("", "m3u8*")
+	tmpDir, err := os.MkdirTemp("", "downhls*")
 	if err != nil {
 		return nil, err
 	}
