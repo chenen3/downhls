@@ -1,3 +1,7 @@
+# Deprecated
+
+FFmpeg can download HLS directly and it works great. I have no reason to reinvent the wheel.
+
 # downhls
 
 This repository implements a tool for downloading HTTP Live Streaming (HLS), 
